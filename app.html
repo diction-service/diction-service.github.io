@@ -227,6 +227,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:va
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty{padding:40px 16px;text-align:center;color:var(--text3);font-family:var(--font-mono);font-size:13px;line-height:1.8}
 .empty-ic{font-size:32px;margin-bottom:12px;opacity:.4}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.access-denied-msg{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none;opacity:0;transition:opacity .3s}
+.access-denied-msg.show{opacity:1}
+.ad-inner{background:#1f0d0d;border:1px solid var(--red);border-radius:var(--rl);padding:20px 32px;display:flex;align-items:center;gap:12px;font-family:var(--font-mono);font-size:16px;color:var(--red);box-shadow:0 0 40px #e24b4a33}
+.ad-icon{font-size:20px}
 </style>
 </head>
 <body>
@@ -242,7 +247,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:va
   <div class="nav" data-panel="notif"><span class="nav-ic">♡</span>通知<span class="unread-num" id="notif-badge">0</span></div>
   <div class="nav" data-panel="clips"><span class="nav-ic">◆</span>クリップ</div>
   <div class="nav" data-panel="drive"><span class="nav-ic">☁</span>ドライブ</div>
-  <div class="nav" data-panel="channels"><span class="nav-ic">■</span>チャンネル</div>
+  <div class="nav" data-panel="channels"><span class="nav-ic">■</span>チャンネル<span id="ch-badge" class="unread-num"></span></div>
   <div class="nav" data-panel="search"><span class="nav-ic">○</span>検索</div>
   <div class="nav" id="nav-admin"><span class="nav-ic">⚙</span>管理者</div>
   <button class="note-btn" onclick="openCompose()">ノート</button>
@@ -391,15 +396,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:va
     <div id="srv-hits"></div>
   </div>
   <div class="w-card">
+    <div class="w-title">チャンネル検索</div>
+    <input class="srv-inp" id="ch-search-inp" placeholder="チャンネル名..." oninput="chSearch(this.value)" autocomplete="off"/>
+    <div id="ch-search-hits"></div>
+  </div>
+  <div class="w-card">
     <div class="w-title">トレンド</div>
     <div class="trend-row"><span class="trend-tag">#project_unknown</span><span class="trend-cnt">謎の投稿</span></div>
     <div class="trend-row"><span class="trend-tag">#ARG_解読中</span><span class="trend-cnt">8人</span></div>
     <div class="trend-row"><span class="trend-tag">#shadow_layer</span><span class="trend-cnt">11人</span></div>
     <div class="trend-row"><span class="trend-tag">#layer2</span><span class="trend-cnt">4人</span></div>
   </div>
-  <div class="w-card">
+  <div class="w-card" id="hint-card" style="display:none">
     <div class="w-title">謎解きヒント</div>
-    <div style="font-size:12px;color:var(--text2);line-height:1.8;font-family:var(--font-mono)">
+    <div id="hint-content" style="font-size:12px;color:var(--text2);line-height:1.8;font-family:var(--font-mono)">
       <span style="color:var(--purple)">// HINT_001</span><br>
       「暗号」と投稿すると何かが...<br><br>
       <span style="color:var(--purple)">// HINT_002</span><br>
@@ -427,11 +437,13 @@ const ACTORS = [
   {name:'緊急放送', handle:'@broadcast@unknown.io',   cls:'av4', t:'!'},
 ];
 const SERVERS=[
-  {name:'misskey.io',  desc:'メインサーバー・公開',     ic:'M',cls:'ic-t',b:'open',  s:false,kws:['misskey','io']},
-  {name:'unknown.io',  desc:'招待制・謎の存在が管理',   ic:'?',cls:'ic-p',b:'hidden',s:true, kws:['unknown','謎','project']},
-  {name:'shadow.layer',desc:'完全非公開・暗号解読者のみ',ic:'S',cls:'ic-r',b:'locked',s:true, kws:['shadow','layer','暗号']},
-  {name:'agent.space', desc:'調査員向けサーバー',        ic:'A',cls:'ic-g',b:'hidden',s:true, kws:['agent','調査']},
-  {name:'social.normal',desc:'一般公開サーバー',         ic:'N',cls:'ic-a',b:'open',  s:false,kws:['normal','social']},
+  {name:'misskey.io',    desc:'メインサーバー・公開',         ic:'M',cls:'ic-t',b:'open',  s:false,hint:false,kws:['misskey','io','メイン']},
+  {name:'unknown.io',    desc:'招待制・謎の存在が管理',       ic:'?',cls:'ic-p',b:'hidden',s:true, hint:false,kws:['unknown','謎','project','招待']},
+  {name:'shadow.layer',  desc:'完全非公開・暗号解読者のみ',   ic:'S',cls:'ic-r',b:'locked',s:true, hint:true, kws:['shadow','layer','暗号','decode']},
+  {name:'agent.space',   desc:'調査員向けサーバー',           ic:'A',cls:'ic-g',b:'hidden',s:true, hint:false,kws:['agent','調査','space']},
+  {name:'social.normal', desc:'一般公開サーバー',             ic:'N',cls:'ic-a',b:'open',  s:false,hint:false,kws:['normal','social','一般']},
+  {name:'cipher.net',    desc:'暗号解読者のコミュニティ',     ic:'C',cls:'ic-p',b:'hidden',s:true, hint:false,kws:['cipher','暗号','net','解読']},
+  {name:'void.space',    desc:'存在しないはずのサーバー',     ic:'V',cls:'ic-r',b:'locked',s:true, hint:false,kws:['void','存在','space','虚無']},
 ];
 
 // STATE
@@ -458,6 +470,8 @@ async function init(){
   renderChannelList();
   renderNotifs('all');
   setupRealtime();
+  updateChBadge();
+  checkHintVisibility();
 }
 
 function renderUser(){
@@ -485,16 +499,8 @@ async function logout(){
 // DATA LOADING
 // ============================================================
 async function loadPosts(){
-  const {data} = await sb.from('posts').select('*').order('created_at',{ascending:true});
-  posts = data||[];
-  for(const p of posts){
-    const {data:reps} = await sb.from('replies').select('*').eq('post_id',p.id).order('created_at',{ascending:true});
-    p._replies = reps||[];
-    const {data:lk} = await sb.from('likes').select('*').eq('post_id',p.id).eq('user_id',me.id).maybeSingle();
-    p._liked = !!lk;
-    const {data:cl} = await sb.from('clips').select('*').eq('post_id',p.id).eq('user_id',me.id).maybeSingle();
-    p._clipped = !!cl;
-  }
+  // タイムラインは初期表示しない（ARG演出）
+  posts = [];
 }
 
 async function loadTriggers(){
@@ -568,19 +574,45 @@ document.querySelectorAll('.nav[data-panel]').forEach(nav=>{
 });
 
 document.getElementById('nav-admin').addEventListener('click',()=>{
-  // タイムラインを表示しつつ管理バーをトグル
+  const bar = document.getElementById('admin-bar');
+  if(bar.style.display==='block'){
+    bar.style.display='none'; return;
+  }
+  const pw = prompt('管理者パスワードを入力してください:');
+  if(pw !== '0601'){ showToast('パスワードが違います'); return; }
   document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-timeline').classList.add('active');
   document.getElementById('right-col').style.display='';
-  const bar = document.getElementById('admin-bar');
-  bar.style.display = bar.style.display==='block' ? 'none' : 'block';
-  if(bar.style.display==='block') renderTriggerChips();
+  bar.style.display='block';
+  renderTriggerChips();
 });
 
 function switchTab(el){
   el.parentElement.querySelectorAll('.tl-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
+  const restricted = ['ローカル','ソーシャル','グローバル'];
+  if(restricted.includes(el.textContent.trim())){
+    showAccessDenied();
+    setTimeout(()=>{
+      el.parentElement.querySelectorAll('.tl-tab').forEach(t=>t.classList.remove('active'));
+      el.parentElement.querySelector('.tl-tab').classList.add('active');
+    },2000);
+  }
+}
+
+function showAccessDenied(){
+  const feed = document.getElementById('tl-feed');
+  const old = feed.innerHTML;
+  feed.style.animation='none';
+  feed.offsetHeight;
+  feed.style.animation='shake 0.4s ease';
+  const msg = document.createElement('div');
+  msg.className='access-denied-msg';
+  msg.innerHTML='<div class="ad-inner"><span class="ad-icon">⚠</span><span class="ad-text">アクセスは不可能です</span></div>';
+  document.body.appendChild(msg);
+  setTimeout(()=>{ msg.classList.add('show'); },10);
+  setTimeout(()=>{ msg.classList.remove('show'); setTimeout(()=>msg.remove(),400); },2000);
 }
 
 // ============================================================
@@ -672,7 +704,14 @@ async function submitPost(){
     body:text, cipher:false, likes:0, rp:0, reacts:['👍'], is_alert:false
   }).select().single();
   btn.disabled=false;
-  if(error){ showToast('投稿に失敗しました'); return; }
+  if(error){
+    // DB失敗時はローカルのみに追加
+    const localPost = {id:Date.now(),actor_idx:-1,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body:text,cipher:false,likes:0,rp:0,reacts:['👍'],is_alert:false,created_at:new Date().toISOString(),_replies:[],_liked:false,_clipped:false};
+    posts.push(localPost);
+    document.getElementById('compose-text').value=''; document.getElementById('cc').textContent='500';
+    closeCompose(); renderFeed(); showToast('投稿しました');
+    return;
+  }
   newPost._replies=[]; newPost._liked=false; newPost._clipped=false;
   posts.push(newPost);
   // トリガーチェック
@@ -794,7 +833,13 @@ async function deleteDrive(id){
 // ============================================================
 function renderChannelList(){
   const el = document.getElementById('ch-list');
-  el.innerHTML = channels.map(ch=>`
+  const joined = getJoinedChannels();
+  if(!joined.length){
+    el.innerHTML='<div class="empty" style="padding:20px 12px;font-size:12px">チャンネルがありません<br><span style="color:var(--text3);font-size:11px">サーバーから参加できます</span></div>';
+    return;
+  }
+  const joinedChannels = channels.filter(ch=>joined.includes(ch.id));
+  el.innerHTML = joinedChannels.map(ch=>`
     <div class="ch-item${currentChannelId===ch.id?' active':''}" onclick="openChannel('${ch.id}')">
       <div class="ch-hash">#</div>
       <div style="flex:1;min-width:0">
@@ -803,6 +848,15 @@ function renderChannelList(){
       </div>
       ${ch.pinned?'<span class="ch-pin">PIN</span>':''}
     </div>`).join('');
+}
+
+function getJoinedChannels(){
+  try{ return JSON.parse(localStorage.getItem('joined_channels')||'[]'); }catch{ return []; }
+}
+function joinChannel(chId){
+  const joined = getJoinedChannels();
+  if(!joined.includes(chId)){ joined.push(chId); localStorage.setItem('joined_channels',JSON.stringify(joined)); }
+  renderChannelList();
 }
 
 async function openChannel(id){
@@ -849,10 +903,22 @@ async function sendMsg(id){
   const inp=document.getElementById('ch-inp-'+id); if(!inp)return;
   const body=inp.value.trim(); if(!body)return;
   inp.value='';
-  const name=myMeta.full_name||myMeta.name||myMeta.user_name||me.email||'?';
-  const handle='@'+(myMeta.user_name||myMeta.preferred_username||'you');
-  const avatar=myMeta.avatar_url||myMeta.picture||null;
-  await sb.from('channel_messages').insert({channel_id:id,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body});
+  const name=myMeta.full_name||'?';
+  const handle='@'+(myMeta.user_name||'you');
+  const avatar=myMeta.avatar_url||null;
+  const localMsg={id:Date.now(),channel_id:id,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body,created_at:new Date().toISOString()};
+  // すぐにUI反映
+  const msgsEl=document.getElementById('ch-msgs-'+id);
+  if(msgsEl){
+    const div=document.createElement('div');
+    div.innerHTML=renderChMsg(localMsg);
+    msgsEl.appendChild(div.firstElementChild);
+    msgsEl.scrollTop=msgsEl.scrollHeight;
+  }
+  // DBにも送信（失敗しても表示は維持）
+  sb.from('channel_messages').insert({channel_id:id,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body}).then(({error})=>{
+    if(error) console.warn('channel msg DB error:', error.message);
+  });
 }
 
 // ============================================================
@@ -963,14 +1029,56 @@ function srvSearch(q){
   const hits=SERVERS.filter(s=>s.kws.some(k=>k.includes(ql))||s.name.includes(ql));
   if(!hits.length){el.innerHTML='';return}
   el.innerHTML=hits.map(s=>`
-    <div class="srv-hit">
+    <div class="srv-hit" onclick="window.open('./server-${s.name.replace('.','')}.html','_blank')">
       <div class="ic-sm ${s.cls}">${s.ic}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:500;font-family:var(--font-mono)">${s.name}</div>
+        <div style="font-size:12px;font-weight:500;font-family:var(--font-mono)">${s.name}${s.s?' 🔒':''}</div>
         <div style="font-size:11px;color:var(--text2)">${s.desc}</div>
       </div>
       <span class="badge-sm b-${s.b}">${s.b==='open'?'公開':s.b==='hidden'?'隠し':'鍵付き'}</span>
     </div>`).join('');
+}
+
+function chSearch(q){
+  const el=document.getElementById('ch-search-hits');
+  if(!q){el.innerHTML='';return}
+  const ql=q.toLowerCase();
+  const hits=channels.filter(ch=>ch.name.toLowerCase().includes(ql)||(ch.description||'').toLowerCase().includes(ql));
+  if(!hits.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);padding:6px 0">見つかりません</div>';return}
+  const joined=getJoinedChannels();
+  el.innerHTML=hits.map(ch=>`
+    <div class="srv-hit" onclick="joinAndOpen('${ch.id}')">
+      <div class="ic-sm ic-p">#</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;font-family:var(--font-mono)">${esc(ch.name)}</div>
+        <div style="font-size:11px;color:var(--text2)">${esc(ch.description||'')}</div>
+      </div>
+      <span style="font-size:10px;color:${joined.includes(ch.id)?'var(--teal)':'var(--text3)'};font-family:var(--font-mono)">${joined.includes(ch.id)?'参加中':'未参加'}</span>
+    </div>`).join('');
+}
+
+function joinAndOpen(chId){
+  joinChannel(chId);
+  updateChBadge();
+  // チャンネルパネルに切り替えて開く
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-channels').classList.add('active');
+  document.getElementById('right-col').style.display='none';
+  openChannel(chId);
+  showToast('#'+chId+' に参加しました');
+}
+
+function updateChBadge(){
+  const badge=document.getElementById('ch-badge');
+  const cnt=getJoinedChannels().length;
+  if(badge){ badge.textContent=cnt>0?cnt:''; badge.className=cnt>0?'unread-num show':'unread-num'; }
+}
+
+function checkHintVisibility(){
+  const hasAccess = localStorage.getItem('server_shadow.layer')==='joined' || localStorage.getItem('hint_unlocked')==='true';
+  const card=document.getElementById('hint-card');
+  if(card) card.style.display=hasAccess?'':'none';
 }
 
 // ============================================================
