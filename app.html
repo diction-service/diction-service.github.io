@@ -717,9 +717,7 @@ function renote(id, el){
   const p=posts.find(x=>x.id===id); if(!p)return;
   const a=p.actor_idx>=0?ACTORS[p.actor_idx]:{name:p.user_name||'?',handle:p.user_handle||''};
   openCompose();
-  document.getElementById('compose-text').value='RN: @'+(a.handle.split('@')[1]||a.name)+'
-「'+p.body.slice(0,60)+(p.body.length>60?'...':'')+'」
-';
+  document.getElementById('compose-text').value='RN: @'+(a.handle.split('@')[1]||a.name)+'\n「'+p.body.slice(0,60)+(p.body.length>60?'...':'')+'」\n';
   p.rp=(p.rp||0)+1; el.textContent='↻ '+p.rp;
   sb.from('posts').update({rp:p.rp}).eq('id',id).then(()=>{});
 }
