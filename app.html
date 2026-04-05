@@ -745,8 +745,7 @@ async function submitPost(){
   const cwText = document.getElementById('cw-field').value.trim();
   const rawText = document.getElementById('compose-text').value.trim();
   if(!rawText) return;
-  const text = cwText ? '[CW: '+cwText+']
-'+rawText : rawText;
+  const text = cwText ? '[CW: '+cwText+']\n'+rawText : rawText;
   const btn = document.getElementById('post-submit-btn');
   btn.disabled=true;
   const name    = myMeta.full_name||myMeta.name||myMeta.user_name||me.email||'?';
