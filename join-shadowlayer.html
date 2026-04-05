@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>shadow.layer — 参加 | Project UNKNOWN</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0d0f;--bg2:#131316;--bg3:#1a1a1e;--bg4:#222228;--border:#2a2a32;--border2:#363640;--text:#e8e8f0;--text2:#8888a0;--text3:#555568;--purple:#7f77dd;--purple-dim:#534ab7;--purple-bg:#1e1a3a;--teal:#1d9e75;--teal-bg:#0a1f18;--red:#e24b4a;--red-bg:#1f0d0d;--font-sans:'Noto Sans JP',sans-serif;--font-mono:'IBM Plex Mono',monospace;--r:8px;--rl:12px;--srv-color:#e24b4a;--srv-bg:#1f0d0d;--srv-border:#e24b4a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font-sans);background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;padding:40px 20px;position:relative}
+body::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 40%,#e24b4a22,transparent);pointer-events:none}
+.scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px)}
+.card{position:relative;z-index:1;width:100%;max-width:460px;background:var(--bg2);border:1px solid var(--srv-border);border-radius:var(--rl);overflow:hidden}
+.card-hd{padding:24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px}
+.srv-ic{width:56px;height:56px;border-radius:12px;background:var(--srv-bg);color:var(--srv-color);border:1px solid var(--srv-border);display:flex;align-items:center;justify-content:center;font-size:22px;font-family:var(--font-mono);font-weight:500;flex-shrink:0;box-shadow:0 0 20px #e24b4a22}
+.srv-name{font-family:var(--font-mono);font-size:18px;font-weight:500;margin-bottom:4px}
+.srv-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:500;font-family:var(--font-mono);background:var(--srv-bg);color:var(--srv-color);border:1px solid var(--srv-border)}
+.card-body{padding:22px 24px}
+.srv-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:18px}
+.ch-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);margin-bottom:8px}
+.ch-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;font-size:13px;color:var(--text2)}
+.ch-hash{color:var(--srv-color);font-family:var(--font-mono)}
+.ch-list{margin-bottom:20px}
+.pw-box{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.pw-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);margin-bottom:4px}
+.pw-hint{font-size:12px;color:var(--srv-color);font-family:var(--font-mono);margin-bottom:12px;line-height:1.5}
+.pw-inp{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);font-size:13px;color:var(--text);font-family:var(--font-mono);outline:none;margin-bottom:10px;transition:border-color .2s}
+.pw-inp:focus{border-color:var(--srv-border)}
+.join-btn{width:100%;padding:12px;background:var(--srv-bg);color:var(--srv-color);border:1px solid var(--srv-border);border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:opacity .2s;letter-spacing:.5px}
+.join-btn:hover{opacity:.8}
+.err{font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-top:8px;display:none;font-family:var(--font-mono)}
+.err.show{display:block}
+.success{display:none;text-align:center;padding:16px 0}
+.success.show{display:block}
+.success-mark{font-size:36px;margin-bottom:12px;color:var(--teal)}
+.success-text{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:20px}
+.go-btn{display:inline-block;padding:11px 28px;background:var(--srv-bg);color:var(--srv-color);border:1px solid var(--srv-border);border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;font-family:var(--font-sans);transition:opacity .2s;margin-right:10px}
+.go-btn:hover{opacity:.8}
+.back-btn{display:inline-block;padding:11px 20px;background:var(--bg3);color:var(--text2);border:1px solid var(--border2);border-radius:var(--r);font-size:13px;cursor:pointer;text-decoration:none;font-family:var(--font-sans)}
+.already{font-size:12px;color:var(--teal);background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:8px 12px;margin-bottom:16px;display:none;font-family:var(--font-mono)}
+.already.show{display:block}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="card">
+  <div class="card-hd">
+    <div class="srv-ic">S</div>
+    <div>
+      <div class="srv-name">shadow.layer</div>
+      <span class="srv-badge">鍵付き</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="srv-desc">完全非公開サーバー。暗号を解いた者のみが入室を許可される。</p>
+    <div class="ch-list">
+      <div class="ch-label">参加できるチャンネル</div>
+      <div class="ch-row"><span class="ch-hash">#</span>cipher</div>
+      <div class="ch-row"><span class="ch-hash">#</span>theories</div>
+    </div>
+    <div class="already" id="already">このサーバーには既に参加しています</div>
+    <div id="form-area">
+      <div class="pw-box">
+        <div class="pw-label">// アクセスキー</div>
+        <div class="pw-hint">最初の暗号を解け</div>
+        <input class="pw-inp" id="pw-inp" type="text" placeholder="アクセスキーを入力..." autocomplete="off"/>
+        <button class="join-btn" onclick="tryJoin()">参加する</button>
+        <div class="err" id="err">アクセスキーが違います</div>
+      </div>
+    </div>
+    <div class="success" id="success">
+      <div class="success-mark">✓</div>
+      <div class="success-text">shadow.layer へのアクセスが許可されました。<br>チャンネルが追加されました。</div>
+      <a class="go-btn" href="./srv-shadowlayer.html">サーバーへ入る</a>
+      <a class="back-btn" href="./app.html">ホームへ</a>
+    </div>
+  </div>
+</div>
+<script>
+const JOIN_KEY = 'shadow.layer';
+const PASSWORD = 'HELLO WORLD';
+const CHANNELS = ["cipher", "theories"];
+const IS_PUBLIC = false;
+const HINT = true;
+
+function getJoinedChannels(){ try{ return JSON.parse(localStorage.getItem('joined_channels')||'[]'); }catch{ return []; } }
+function getJoinedServers(){ try{ return JSON.parse(localStorage.getItem('joined_servers')||'[]'); }catch{ return []; } }
+
+function doJoin(){
+  const servers = getJoinedServers();
+  if(!servers.includes(JOIN_KEY)) servers.push(JOIN_KEY);
+  localStorage.setItem('joined_servers', JSON.stringify(servers));
+  localStorage.setItem('server_'+JOIN_KEY, 'joined');
+  const joined = getJoinedChannels();
+  CHANNELS.forEach(ch=>{ if(!joined.includes(ch)) joined.push(ch); });
+  localStorage.setItem('joined_channels', JSON.stringify(joined));
+  if(HINT) localStorage.setItem('hint_unlocked','true');
+  document.getElementById('form-area').style.display='none';
+  document.getElementById('success').classList.add('show');
+}
+
+// 既に参加済み
+if(getJoinedServers().includes(JOIN_KEY)){
+  document.getElementById('already').classList.add('show');
+  document.getElementById('form-area').style.display='none';
+  document.getElementById('success').classList.add('show');
+}
+
+// 公開サーバーは自動参加
+if(IS_PUBLIC && !getJoinedServers().includes(JOIN_KEY)){
+  doJoin();
+}
+
+function tryJoin(){
+  const val = document.getElementById('pw-inp').value.trim().toUpperCase();
+  if(val !== PASSWORD.toUpperCase()){
+    document.getElementById('pw-inp').style.borderColor='var(--red)';
+    document.getElementById('err').classList.add('show');
+    return;
+  }
+  doJoin();
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter') tryJoin();
+});
+</script>
+</body>
+</html>
