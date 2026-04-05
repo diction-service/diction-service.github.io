@@ -519,15 +519,35 @@ async function logout(){
 // DATA LOADING
 // ============================================================
 async function loadPosts(){
-  // ユーザー自身の投稿のみ取得（ARG演出でARGキャラの投稿は非表示）
+  // 自分の投稿のみ取得（タイムラインは初期空・ARGキャラは管理者が投稿）
   const {data,error} = await sb.from('posts').select('*').eq('user_id',me.id).order('created_at',{ascending:true});
-  posts = data||[];
+  const dbPosts = data||[];
+  // localStorageのローカル投稿と統合（DBに保存できなかったものを復元）
+  const localSaved = getLocalSavedPosts();
+  // DBにあるIDをセット化
+  const dbIds = new Set(dbPosts.map(p=>String(p.id)));
+  // ローカルのみの投稿（DBにない）を追加
+  const localOnly = localSaved.filter(p=>!dbIds.has(String(p.id)));
+  posts = [...dbPosts, ...localOnly].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const lc = getLocalClips();
   for(const p of posts){
     const {data:reps} = await sb.from('replies').select('*').eq('post_id',p.id).order('created_at',{ascending:true});
     p._replies = reps||[];
     p._liked = false;
-    const lc = getLocalClips();
     p._clipped = !!lc.find(c=>c.postId===p.id);
+  }
+}
+
+function getLocalSavedPosts(){
+  try{ return JSON.parse(localStorage.getItem('local_posts')||'[]'); }catch{ return []; }
+}
+function saveLocalPost(p){
+  const saved = getLocalSavedPosts();
+  if(!saved.find(x=>String(x.id)===String(p.id))){
+    // _replies等の内部プロパティは保存しない
+    const toSave={id:p.id,actor_idx:p.actor_idx,user_id:p.user_id,user_name:p.user_name,user_handle:p.user_handle,user_avatar:p.user_avatar,body:p.body,cipher:p.cipher,likes:p.likes,rp:p.rp,reacts:p.reacts,is_alert:p.is_alert,created_at:p.created_at};
+    saved.push(toSave);
+    localStorage.setItem('local_posts',JSON.stringify(saved));
   }
 }
 
@@ -758,12 +778,14 @@ async function submitPost(){
     // DB失敗時はローカルのみに追加
     const localPost = {id:Date.now(),actor_idx:-1,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body:text,cipher:false,likes:0,rp:0,reacts:['👍'],is_alert:false,created_at:new Date().toISOString(),_replies:[],_liked:false,_clipped:false};
     posts.push(localPost);
+    saveLocalPost(localPost);
     document.getElementById('compose-text').value=''; document.getElementById('cc').textContent='500';
     closeCompose(); renderFeed(); showToast('投稿しました');
     return;
   }
   newPost._replies=[]; newPost._liked=false; newPost._clipped=false;
   posts.push(newPost);
+  saveLocalPost(newPost);
   // トリガーチェック
   const bodyLow = text.toLowerCase();
   const fired = triggers.filter(t=>bodyLow.includes(t.word.toLowerCase()));
@@ -943,10 +965,27 @@ function joinChannel(chId){
   renderChannelList();
 }
 
+function getLocalChMsgs(id){ try{ return JSON.parse(localStorage.getItem('ch_msgs_'+id)||'[]'); }catch{ return []; } }
+function saveLocalChMsg(id,msg){
+  const msgs=getLocalChMsgs(id);
+  if(!msgs.find(m=>String(m.id)===String(msg.id))){
+    msgs.push({id:msg.id,user_name:msg.user_name,user_handle:msg.user_handle,user_avatar:msg.user_avatar,body:msg.body,created_at:msg.created_at});
+    // 最新200件のみ保持
+    if(msgs.length>200) msgs.splice(0,msgs.length-200);
+    localStorage.setItem('ch_msgs_'+id,JSON.stringify(msgs));
+  }
+}
+
 async function openChannel(id){
   currentChannelId=id; renderChannelList();
+  // まずlocalStorageのキャッシュを表示
+  const localMsgs = getLocalChMsgs(id);
   const {data} = await sb.from('channel_messages').select('*').eq('channel_id',id).order('created_at',{ascending:true}).limit(100);
-  const msgs = data||[];
+  // DBとローカルをマージ（DBを優先、ローカルのみのものを追加）
+  const dbMsgs = data||[];
+  const dbIds = new Set(dbMsgs.map(m=>String(m.id)));
+  const localOnly = localMsgs.filter(m=>!dbIds.has(String(m.id)));
+  const msgs = [...dbMsgs,...localOnly].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
   const ch = channels.find(c=>c.id===id);
   const main = document.getElementById('ch-main');
   main.innerHTML=`
@@ -999,6 +1038,8 @@ async function sendMsg(id){
     msgsEl.appendChild(div.firstElementChild);
     msgsEl.scrollTop=msgsEl.scrollHeight;
   }
+  // localStorageに保存
+  saveLocalChMsg(id,localMsg);
   // DBにも送信（失敗しても表示は維持）
   sb.from('channel_messages').insert({channel_id:id,user_id:me.id,user_name:name,user_handle:handle,user_avatar:avatar,body}).then(({error})=>{
     if(error) console.warn('channel msg DB error:', error.message);
@@ -1228,7 +1269,7 @@ function joinAndOpen(chId){
 
 function updateChBadge(){
   const badge=document.getElementById('ch-badge');
-  const cnt=getJoinedChannels().length;
+  const cnt=parseInt(localStorage.getItem('ch_unread'))||0;
   if(badge){ badge.textContent=cnt>0?cnt:''; badge.className=cnt>0?'unread-num show':'unread-num'; }
 }
 
