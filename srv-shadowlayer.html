@@ -375,7 +375,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:va
 </div>
 
 <!-- RIGHT COL -->
-<div class="right-col" id="right-col">
+<div class="right-col" id="right-col" style="display:flex">
   <div class="w-card">
     <div class="w-title">サーバー検索</div>
     <input class="srv-inp" id="srv-inp" placeholder="サーバー名..." oninput="srvSearch(this.value)" autocomplete="off"/>
@@ -709,7 +709,7 @@ document.querySelectorAll('.nav[data-panel]').forEach(nav=>{
     nav.classList.add('active');
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     document.getElementById('panel-'+panel).classList.add('active');
-    document.getElementById('right-col').style.display = panel==='timeline' ? '' : 'none';
+    const rc = document.getElementById('right-col'); rc.style.display = panel==='timeline' ? 'flex' : 'none';
     if(panel==='notif') markNotifsRead();
     if(panel==='channels'){
       // チャンネルバッジをリセット
